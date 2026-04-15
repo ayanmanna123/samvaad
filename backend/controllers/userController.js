@@ -166,7 +166,7 @@ export const searchUsers = async (req, res) => {
     const contactEmails = syncedContacts.map(c => c.email).filter(Boolean);
     const contactPhones = syncedContacts.map(c => c.tel).filter(Boolean);
 
-    const query = {
+    let query = {
       $and: [
         { _id: { $ne: req.user._id } },
         {
@@ -179,7 +179,7 @@ export const searchUsers = async (req, res) => {
       ],
     };
 
-    // If sync is enabled, we strictly filter to only those in the synced contacts
+    // If sync is enabled AND there are contacts to filter by
     if (syncEnabled && (contactEmails.length > 0 || contactPhones.length > 0)) {
       query.$and.push({
         $or: [
@@ -216,8 +216,9 @@ export const getUsers = async (req, res) => {
     const contactEmails = syncedContacts.map(c => c.email).filter(Boolean);
     const contactPhones = syncedContacts.map(c => c.tel).filter(Boolean);
 
-    const query = { _id: { $ne: req.user._id } };
+    let query = { _id: { $ne: req.user._id } };
 
+    // Strict filter only if sync is enabled AND we have actual contacts to filter by
     if (syncEnabled && (contactEmails.length > 0 || contactPhones.length > 0)) {
       query.$or = [
         { email: { $in: contactEmails } },
@@ -229,6 +230,7 @@ export const getUsers = async (req, res) => {
 
     res.json({
       success: true,
+      count: users.length,
       data: users,
     });
   } catch (error) {

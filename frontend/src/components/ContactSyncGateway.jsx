@@ -7,13 +7,14 @@ const ContactSyncGateway = ({ children }) => {
     const { user, syncContacts, updateSettings } = useAuth();
     const [syncing, setSyncing] = useState(false);
 
-    // If sync is enabled but no contacts are found, force the sync flow
-    const needsSync = user?.settings?.syncContactsEnabled && (!user?.contacts || user?.contacts.length === 0);
+    const isSupported = 'contacts' in navigator && 'ContactsManager' in window;
+    
+    // Only force sync if the feature is enabled, no contacts exist, AND the browser actually supports it (mobile)
+    const needsSync = user?.settings?.syncContactsEnabled && (!user?.contacts || user?.contacts.length === 0) && isSupported;
 
     const handleSync = async () => {
-        if (!('contacts' in navigator && 'ContactsManager' in window)) {
-            alert('Contact sync is only supported on mobile browsers (Chrome/Android). As a desktop user, you can manually add contacts or turn off "Contacts Only" mode in settings.');
-            // Fallback for desktop: just allow through or show how to disable
+        if (!isSupported) {
+            alert('Contact sync is only supported on mobile browsers (Chrome/Android). As a desktop user, you can manually add contacts in settings or use global search.');
             return;
         }
 
@@ -34,9 +35,6 @@ const ContactSyncGateway = ({ children }) => {
     };
 
     const handleDisableSync = async () => {
-        // Option to opt-out if they really want, but the requirement was "without this i cant message anyone"
-        // Let's make it difficult or just force it for now as requested.
-        // But for dev/desktop, we need a "Skip" for now to test.
         await updateSettings({ syncContactsEnabled: false });
     };
 

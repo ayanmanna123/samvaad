@@ -4,11 +4,11 @@ import dns from "node:dns";
 
 // ── DNS fix: prefer IPv4, prevents SRV lookup failures on Windows/some networks
 dns.setDefaultResultOrder("ipv4first");
-try {
-  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
-} catch (_) {
-  console.warn("⚠️  Could not override DNS servers, using system defaults.");
-}
+// try {
+//   dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+// } catch (_) {
+//   console.warn("⚠️  Could not override DNS servers, using system defaults.");
+// }
 
 dotenv.config();
 

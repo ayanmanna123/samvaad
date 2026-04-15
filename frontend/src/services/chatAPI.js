@@ -599,9 +599,7 @@ export const getUsers = async (token) => {
       "Content-Type": "application/json",
     },
   });
-  const json = await response.json();
-  // Normalize: return array of users when possible
-  return json.data || json.users || json;
+  return response.json();
 };
 
 export const apiUpdateProfile = async (data) => {
