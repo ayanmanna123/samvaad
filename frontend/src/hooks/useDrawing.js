@@ -13,6 +13,45 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
   const [tool, setTool] = useState('pen');
   const [cursors, setCursors] = useState(new Map());
 
+  const [localStrokes, setLocalStrokes] = useState([]);
+  
+  // Core Drawing Function - Defined first to avoid hosting issues
+  const drawLine = useCallback((x1, y1, x2, y2, strokeColor, size, currentTool) => {
+    if (!contextRef.current) return;
+    const ctx = contextRef.current;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+
+    if (currentTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = size * 2;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = size;
+    }
+
+    ctx.stroke();
+  }, []);
+
+  // Internal helper to re-draw all strokes
+  const redraw = useCallback((strokesToDraw, width, height) => {
+    if (!contextRef.current) return;
+    strokesToDraw.forEach(s => {
+      drawLine(
+        s.x1 * width, 
+        s.y1 * height, 
+        s.x2 * width, 
+        s.y2 * height, 
+        s.color, 
+        s.brushSize, 
+        s.tool
+      );
+    });
+  }, [drawLine]);
+
   // Initialize and Resize Canvas with DPI Scaling
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,33 +77,26 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       contextRef.current = ctx;
+
+      // RE-DRAW existing strokes after resize clears the canvas
+      setLocalStrokes(prev => {
+        redraw(prev, width, height);
+        return prev;
+      });
     };
 
     resize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, []);
+    
+    // Listen for parent size changes (e.g. when messages load)
+    const observer = new ResizeObserver(() => resize());
+    if (canvas.parentElement) observer.observe(canvas.parentElement);
 
-  // Core Drawing Function
-  const drawLine = useCallback((x1, y1, x2, y2, strokeColor, size, currentTool) => {
-    if (!contextRef.current) return;
-    const ctx = contextRef.current;
-
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-
-    if (currentTool === 'eraser') {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = size * 2;
-    } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = size;
-    }
-
-    ctx.stroke();
-  }, []);
+    return () => {
+      window.removeEventListener('resize', resize);
+      observer.disconnect();
+    };
+  }, [redraw]);
 
   const getCoordinates = (e) => {
     const canvas = canvasRef.current;
@@ -116,23 +148,27 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
 
     drawLine(lastX, lastY, x, y, color, brushSize, tool);
 
+    const newStroke = {
+      x1: lastX / width,
+      y1: lastY / height,
+      x2: x / width,
+      y2: y / height,
+      color,
+      brushSize,
+      tool
+    };
+
+    setLocalStrokes(prev => [...prev, newStroke]);
+
     if (onRemoteDraw) {
-      onRemoteDraw({
-        x1: lastX / width,
-        y1: lastY / height,
-        x2: x / width,
-        y2: y / height,
-        color,
-        brushSize,
-        tool
-      });
+      onRemoteDraw(newStroke);
     }
 
     contextRef.current.lastX = x;
     contextRef.current.lastY = y;
   };
 
-  const clearCanvas = () => {
+  const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !contextRef.current) return;
     const ctx = contextRef.current;
@@ -140,25 +176,20 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
-  };
+    setLocalStrokes([]);
+  }, []);
 
   const setStrokes = useCallback((strokes) => {
     if (!canvasRef.current || !contextRef.current) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
     
-    strokes.forEach(s => {
-      drawLine(
-        s.x1 * rect.width, 
-        s.y1 * rect.height, 
-        s.x2 * rect.width, 
-        s.y2 * rect.height, 
-        s.color, 
-        s.brushSize, 
-        s.tool
-      );
-    });
-  }, [drawLine]);
+    // Clear first to avoid double rendering
+    clearCanvas();
+    
+    const { clientWidth: width, clientHeight: height } = canvas;
+    setLocalStrokes(strokes);
+    redraw(strokes, width, height);
+  }, [clearCanvas, redraw]);
 
   return {
     canvasRef,
@@ -175,7 +206,8 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
     handleMouseMove,
     clearCanvas,
     drawLine,
-    setStrokes
+    setStrokes,
+    setLocalStrokes
   };
 };
 

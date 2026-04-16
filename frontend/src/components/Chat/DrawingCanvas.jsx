@@ -40,7 +40,8 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
     handleMouseMove,
     clearCanvas,
     drawLine,
-    setStrokes
+    setStrokes,
+    setLocalStrokes
   } = useDrawing({ onRemoteDraw, onMouseMove });
 
   // Handle Socket Events
@@ -63,6 +64,8 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
         data.brushSize, 
         data.tool
       );
+      // Also add to local history so it persists after resize
+      setLocalStrokes(prev => [...prev, data]);
     });
 
     socketService.on('mouse-move', (data) => {

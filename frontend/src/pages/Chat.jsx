@@ -1191,13 +1191,8 @@ const Chat = ({ token }) => {
                     onScroll={handleScroll}
                     className={`flex-1 overflow-y-auto scrollbar-custom ${currentBgCls} md:bg-transparent sv-chat-body-light`}
                   >
-                    <div className="max-w-4xl w-full mx-auto relative px-4 md:px-6 py-4 flex flex-col gap-2 pt-2 min-h-full">
-                      <DrawingCanvas 
-                        conversationId={selectedConversation?._id}
-                        isActive={showDrawingCanvas}
-                        onClose={() => setShowDrawingCanvas(false)}
-                        user={user}
-                      />
+                    <div className="w-full relative min-h-full">
+                      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-4 flex flex-col gap-2 pt-2">
                       {loading ? (
                         <div className="flex items-center justify-center py-20">
                           <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'hsl(var(--sv-accent))' }} />
@@ -1229,7 +1224,15 @@ const Chat = ({ token }) => {
                       </AnimatePresence>
                       <div ref={messagesEndRef} />
                     </div>
+
+                    <DrawingCanvas 
+                      conversationId={selectedConversation?._id}
+                      isActive={showDrawingCanvas}
+                      onClose={() => setShowDrawingCanvas(false)}
+                      user={user}
+                    />
                   </div>
+                </div>
 
                   {/* Floating Input Area */}
                   <div className="md:px-6 md:pb-6 md:pt-2 md:bg-gradient-to-t md:from-[hsl(var(--sv-bg))] md:via-[hsl(var(--sv-bg))/0.4] md:to-transparent sticky bottom-0 z-20 sv-input-bar-light">
