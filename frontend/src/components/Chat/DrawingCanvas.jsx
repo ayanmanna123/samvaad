@@ -116,9 +116,9 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
         <motion.div
           key={c.userId}
           className="absolute pointer-events-none z-50 flex flex-col items-center gap-1"
-          animate={{ 
-            x: c.x * (canvasRef.current?.clientWidth || 0), 
-            y: c.y * (canvasRef.current?.clientHeight || 0) 
+          style={{ 
+            left: `${c.x * 100}%`, 
+            top: `${c.y * 100}%` 
           }}
           transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.5 }}
         >
@@ -136,7 +136,7 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 p-3 bg-black/60 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl pointer-events-auto"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-4 p-3 bg-black/60 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl pointer-events-auto z-[2101]"
           >
             <div className="flex items-center gap-2">
               <button 
