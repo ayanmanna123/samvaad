@@ -55,11 +55,13 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
     socketService.on('draw', (data) => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
+      const VIRTUAL_HEIGHT = 1000000;
+      
       drawLine(
         data.x1 * rect.width, 
-        data.y1 * rect.height, 
+        data.y1 * VIRTUAL_HEIGHT, 
         data.x2 * rect.width, 
-        data.y2 * rect.height, 
+        data.y2 * VIRTUAL_HEIGHT, 
         data.color, 
         data.brushSize, 
         data.tool
@@ -121,7 +123,7 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
           className="absolute pointer-events-none z-50 flex flex-col items-center gap-1"
           style={{ 
             left: `${c.x * 100}%`, 
-            top: `${c.y * 100}%` 
+            top: `${c.y * 1000000}px` 
           }}
           transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.5 }}
         >

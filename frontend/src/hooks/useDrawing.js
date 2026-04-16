@@ -14,6 +14,10 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
   const [cursors, setCursors] = useState(new Map());
 
   const [localStrokes, setLocalStrokes] = useState([]);
+
+  // High-res virtual height to ensure Y coordinates stay fixed relative to the TOP 
+  // as the container grows at the BOTTOM.
+  const VIRTUAL_HEIGHT = 1000000;
   
   // Core Drawing Function - Defined first to avoid hosting issues
   const drawLine = useCallback((x1, y1, x2, y2, strokeColor, size, currentTool) => {
@@ -37,14 +41,14 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
   }, []);
 
   // Internal helper to re-draw all strokes
-  const redraw = useCallback((strokesToDraw, width, height) => {
+  const redraw = useCallback((strokesToDraw, width) => {
     if (!contextRef.current) return;
     strokesToDraw.forEach(s => {
       drawLine(
         s.x1 * width, 
-        s.y1 * height, 
+        s.y1 * VIRTUAL_HEIGHT, 
         s.x2 * width, 
-        s.y2 * height, 
+        s.y2 * VIRTUAL_HEIGHT, 
         s.color, 
         s.brushSize, 
         s.tool
@@ -80,7 +84,7 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
 
       // RE-DRAW existing strokes after resize clears the canvas
       setLocalStrokes(prev => {
-        redraw(prev, width, height);
+        redraw(prev, width);
         return prev;
       });
     };
@@ -138,7 +142,7 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
 
     // Emit cursor position
     if (onMouseMove) {
-      onMouseMove({ x: x / width, y: y / height });
+      onMouseMove({ x: x / width, y: y / VIRTUAL_HEIGHT });
     }
 
     if (!isDrawing) return;
@@ -150,9 +154,9 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
 
     const newStroke = {
       x1: lastX / width,
-      y1: lastY / height,
+      y1: lastY / VIRTUAL_HEIGHT,
       x2: x / width,
-      y2: y / height,
+      y2: y / VIRTUAL_HEIGHT,
       color,
       brushSize,
       tool
@@ -186,9 +190,9 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
     // Clear first to avoid double rendering
     clearCanvas();
     
-    const { clientWidth: width, clientHeight: height } = canvas;
+    const { clientWidth: width } = canvas;
     setLocalStrokes(strokes);
-    redraw(strokes, width, height);
+    redraw(strokes, width);
   }, [clearCanvas, redraw]);
 
   return {
