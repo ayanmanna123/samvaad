@@ -1,7 +1,7 @@
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
 import User from "../models/User.js";
-import { uploadToCloudinary } from "../config/cloudinary.js";
+import { uploadToImageKit } from "../config/imagekit.js";
 import { sendToUser } from "../utils/pushNotification.js";
 
 // @desc    Get messages for a conversation with pagination
@@ -301,8 +301,12 @@ export const uploadMedia = async (req, res) => {
             ? "nexus/voice"
             : "nexus/files";
 
-    // Upload to Cloudinary
-    const result = await uploadToCloudinary(req.file.buffer, folder);
+    // Upload to ImageKit
+    const result = await uploadToImageKit(
+      req.file.buffer, 
+      req.file.originalname, 
+      folder
+    );
 
     // Create message with media
     const messageData = {
@@ -311,11 +315,11 @@ export const uploadMedia = async (req, res) => {
       content: type === 'file' ? req.file.originalname : result.url,
       type: type || "image",
       mediaUrl: result.url,
-      mediaType: result.resource_type,
+      mediaType: type || "image",
       fileName: req.file.originalname,
       fileSize: req.file.size,
       duration: duration || null,
-      thumbnail: result.eager?.[0]?.secure_url || null,
+      thumbnail: result.thumbnailUrl || null,
       replyTo: replyTo || null,
       unlockAt: unlockAt || null,
       unlockConditions: unlockConditions ? JSON.parse(unlockConditions) : null,

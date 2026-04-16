@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
+import Canvas from "../models/Canvas.js";
 import jwt from "jsonwebtoken";
 
 export const initializeSocket = (io) => {
@@ -362,6 +363,65 @@ export const initializeSocket = (io) => {
           fromSocket: true, // flag: already persisted by the REST call
         });
         console.log(`📋 Clipboard push from user ${socket.userId}: type=${payload.type}`);
+      });
+
+      // ─── Drawing Canvas ─────────────────────────────────────────────
+      socket.on("draw", async (data) => {
+        const { conversationId, ...drawData } = data;
+        
+        // Broadcast to everyone in the conversation room except the sender
+        socket.to(conversationId).emit("draw", {
+          ...drawData,
+          userId: socket.userId
+        });
+
+        // Persist stroke segment to DB
+        try {
+          await Canvas.updateOne(
+            { conversationId },
+            { 
+              $push: { 
+                strokes: { 
+                  ...drawData, 
+                  userId: socket.userId 
+                } 
+              },
+              $set: { lastUpdated: new Date() }
+            },
+            { upsert: true }
+          );
+        } catch (err) {
+          console.error("Error saving stroke:", err);
+        }
+      });
+
+      socket.on("mouse-move", (data) => {
+        const { conversationId, x, y } = data;
+        socket.to(conversationId).emit("mouse-move", {
+          userId: socket.userId,
+          userName: socket.user.name,
+          x,
+          y
+        });
+      });
+
+      socket.on("get-canvas-state", async ({ conversationId }) => {
+        try {
+          const canvas = await Canvas.findOne({ conversationId });
+          socket.emit("canvas-state", canvas ? canvas.strokes : []);
+        } catch (err) {
+          console.error("Error fetching canvas state:", err);
+          socket.emit("canvas-state", []);
+        }
+      });
+
+      socket.on("clear-canvas", async ({ conversationId }) => {
+        try {
+          await Canvas.deleteOne({ conversationId });
+          socket.to(conversationId).emit("clear-canvas");
+        } catch (err) {
+          console.error("Error clearing canvas:", err);
+        }
       });
 
       // Handle disconnect

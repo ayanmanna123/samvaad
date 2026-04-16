@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, Smile, Phone, Video, MoreVertical, Search, X, Plus,
   Trash2, LogOut, Settings, Image as ImageIcon, Users,
-  ChevronDown, ChevronLeft, File, MessageSquare, Check, Clipboard, Lock,
+  ChevronDown, ChevronLeft, File as FileIcon, MessageSquare, Check, Clipboard, Lock,
   Mic, StopCircle, Play, Pause, Reply, PhoneCall, Archive, CircleDot, Megaphone, Rss, Clock, Eye, EyeOff
 } from "lucide-react";
 import { useChat } from "../context/ChatContext";
@@ -37,6 +37,7 @@ import { useVibe } from "../context/VibeContext";
 import { getUsers } from "../services/chatAPI";
 import { ListTodo, Sparkles, Wind } from "lucide-react";
 import MobileChatApp from "./MobileChatApp";
+import DrawingCanvas from "../components/Chat/DrawingCanvas";
 
 /* ───────────────────────── helpers ───────────────────────── */
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
@@ -139,6 +140,7 @@ const Chat = ({ token }) => {
   const [activeRailTab, setActiveRailTab] = useState("chats"); // chats, calls, status, channels, groups, gallery
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [showDrawingCanvas, setShowDrawingCanvas] = useState(false);
 
   const categories = ["All Chats", "Groups", "Contacts"];
 
@@ -298,6 +300,16 @@ const Chat = ({ token }) => {
     setReplyToMessage(null);
     setIsViewOnce(false);
     handleStopTyping();
+  };
+
+  const handleSaveDrawing = async (dataURL) => {
+    // Convert dataURL to file
+    const res = await fetch(dataURL);
+    const blob = await res.blob();
+    const file = new File([blob], `drawing-${Date.now()}.png`, { type: 'image/png' });
+    
+    await sendMediaMessage(file, "image", { isDrawing: true });
+    setShowDrawingCanvas(false);
   };
 
   const handleInputChange = (e) => {
@@ -1238,7 +1250,7 @@ const Chat = ({ token }) => {
                             <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10">
                               {uploadPreview.type.startsWith("image/")
                                 ? <img src={uploadPreview.preview} className="w-full h-full object-cover" />
-                                : <div className="w-full h-full flex items-center justify-center bg-white/5"><File size={16} /></div>
+                                : <div className="w-full h-full flex items-center justify-center bg-white/5"><FileIcon size={16} /></div>
                               }
                             </div>
                             <div className="flex-1 truncate">
@@ -1274,6 +1286,10 @@ const Chat = ({ token }) => {
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => fileInputRef.current?.click()} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sv-accent">
                               <Plus size={22} />
+                            </button>
+
+                            <button type="button" onClick={() => setShowDrawingCanvas(true)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sv-accent" title="Collaborative Drawing">
+                              <Sparkles size={20} />
                             </button>
 
                             {isRecording ? (
@@ -1410,7 +1426,7 @@ const Chat = ({ token }) => {
                                         className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 cursor-pointer transition-colors"
                                       >
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 text-sv-accent">
-                                          {mediaTab === 'files' ? <File size={14} /> : <MessageSquare size={14} />}
+                                          {mediaTab === 'files' ? <FileIcon size={14} /> : <MessageSquare size={14} />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <p className="text-[11px] font-bold truncate">{m.fileName || m.content}</p>
@@ -1749,6 +1765,16 @@ const Chat = ({ token }) => {
                 </div>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showDrawingCanvas && (
+            <DrawingCanvas
+              conversationId={selectedConversation?._id}
+              onClose={() => setShowDrawingCanvas(false)}
+              onSave={handleSaveDrawing}
+            />
           )}
         </AnimatePresence>
       </div >

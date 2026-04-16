@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-import { uploadToCloudinary } from '../config/cloudinary.js';
+import { uploadToImageKit } from '../config/imagekit.js';
 
 // @desc    Update user profile
 // @route   PUT /api/users/profile
@@ -17,9 +17,9 @@ export const updateProfile = async (req, res) => {
       // If base64 avatar is provided
       if (req.body.avatar && req.body.avatar.startsWith('data:image')) {
         try {
-          const result = await uploadToCloudinary(req.body.avatar, 'samvad/avatars');
-          if (result && result.secure_url) {
-            user.avatar = result.secure_url;
+          const result = await uploadToImageKit(req.body.avatar, `avatar-${user._id}.jpg`, 'samvaad/avatars');
+          if (result && result.url) {
+            user.avatar = result.url;
           }
         } catch (uploadError) {
           console.error('Avatar upload failed, proceeding with other changes:', uploadError.message);
@@ -122,18 +122,22 @@ export const uploadAvatar = async (req, res) => {
       });
     }
 
-    // Upload to Cloudinary
-    const result = await uploadToCloudinary(req.file.buffer, 'samvad/avatars');
+    // Upload to ImageKit
+    const result = await uploadToImageKit(
+      req.file.buffer, 
+      `avatar-${req.user._id}-${Date.now()}.jpg`, 
+      'samvaad/avatars'
+    );
 
     // Update user avatar
     const user = await User.findById(req.user._id);
-    user.avatar = result.secure_url;
+    user.avatar = result.url;
     await user.save();
 
     res.json({
       success: true,
       data: {
-        avatar: result.secure_url,
+        avatar: result.url,
       },
     });
   } catch (error) {
