@@ -1189,9 +1189,15 @@ const Chat = ({ token }) => {
                   <div
                     ref={messageContainerRef}
                     onScroll={handleScroll}
-                    className={`flex-1 overflow-y-auto scrollbar-custom px-4 md:px-6 py-4 flex flex-col gap-2 ${currentBgCls} md:bg-transparent sv-chat-body-light`}
+                    className={`flex-1 overflow-y-auto scrollbar-custom ${currentBgCls} md:bg-transparent sv-chat-body-light`}
                   >
-                    <div className="max-w-4xl w-full mx-auto flex flex-col gap-2 pt-2">
+                    <div className="max-w-4xl w-full mx-auto relative px-4 md:px-6 py-4 flex flex-col gap-2 pt-2 min-h-full">
+                      <DrawingCanvas 
+                        conversationId={selectedConversation?._id}
+                        isActive={showDrawingCanvas}
+                        onClose={() => setShowDrawingCanvas(false)}
+                        user={user}
+                      />
                       {loading ? (
                         <div className="flex items-center justify-center py-20">
                           <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'hsl(var(--sv-accent))' }} />
@@ -1288,7 +1294,12 @@ const Chat = ({ token }) => {
                               <Plus size={22} />
                             </button>
 
-                            <button type="button" onClick={() => setShowDrawingCanvas(true)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sv-accent" title="Collaborative Drawing">
+                            <button 
+                              type="button" 
+                              onClick={() => setShowDrawingCanvas(!showDrawingCanvas)} 
+                              className={`w-10 h-10 flex items-center justify-center transition-colors ${showDrawingCanvas ? 'text-sv-accent bg-sv-accent/10 rounded-full' : 'text-gray-400 hover:text-sv-accent'}`}
+                              title="Live Chat Drawing"
+                            >
                               <Sparkles size={20} />
                             </button>
 
@@ -1768,15 +1779,6 @@ const Chat = ({ token }) => {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {showDrawingCanvas && (
-            <DrawingCanvas
-              conversationId={selectedConversation?._id}
-              onClose={() => setShowDrawingCanvas(false)}
-              onSave={handleSaveDrawing}
-            />
-          )}
-        </AnimatePresence>
       </div >
     </ContactSyncGateway >
   );
