@@ -141,6 +141,7 @@ const Chat = ({ token }) => {
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [showDrawingCanvas, setShowDrawingCanvas] = useState(false);
+  const [canvasMinHeight, setCanvasMinHeight] = useState(0);
 
   const categories = ["All Chats", "Groups", "Contacts"];
 
@@ -1191,7 +1192,7 @@ const Chat = ({ token }) => {
                     onScroll={handleScroll}
                     className={`flex-1 overflow-y-auto scrollbar-custom ${currentBgCls} md:bg-transparent sv-chat-body-light`}
                   >
-                    <div className="w-full relative min-h-full">
+                    <div className="w-full relative min-h-full" style={{ minHeight: canvasMinHeight }}>
                       <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-4 flex flex-col gap-2 pt-2">
                       {loading ? (
                         <div className="flex items-center justify-center py-20">
@@ -1207,15 +1208,16 @@ const Chat = ({ token }) => {
                             </div>
                           );
                           return (
-                            <MessageItem
-                              key={item.id || item._id}
-                              message={item}
-                              isOwn={item.sender === "user" || item.sender?._id === userId}
-                              onReply={setReplyToMessage}
-                              onReact={addReaction}
-                              onForward={(msg) => { setForwardMessageData(msg); setShowForwardModal(true); }}
-                              userId={userId}
-                            />
+                            <div key={item.id || item._id} data-msg-id={item.id || item._id}>
+                              <MessageItem
+                                message={item}
+                                isOwn={item.sender === "user" || item.sender?._id === userId}
+                                onReply={setReplyToMessage}
+                                onReact={addReaction}
+                                onForward={(msg) => { setForwardMessageData(msg); setShowForwardModal(true); }}
+                                userId={userId}
+                              />
+                            </div>
                           );
                         })
                       )}
@@ -1230,6 +1232,7 @@ const Chat = ({ token }) => {
                       isActive={showDrawingCanvas}
                       onClose={() => setShowDrawingCanvas(false)}
                       user={user}
+                      onHeightChange={setCanvasMinHeight}
                     />
                   </div>
                 </div>

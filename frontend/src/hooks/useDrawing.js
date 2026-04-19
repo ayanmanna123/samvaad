@@ -14,11 +14,21 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
   const [cursors, setCursors] = useState(new Map());
 
   const [localStrokes, setLocalStrokes] = useState([]);
+  const [canvasHeight, setCanvasHeight] = useState(0);
+  const currentAnchorRef = useRef(null);
 
   // High-res virtual height to ensure Y coordinates stay fixed relative to the TOP 
-  // as the container grows at the BOTTOM.
+  // as the container grows at the BOTTOM. (For non-anchored strokes)
   const VIRTUAL_HEIGHT = 1000000;
-  
+
+  // Helper to resolve anchored coordinates to current pixels
+  const resolveCoord = useCallback((yVal, anchorId) => {
+    if (!anchorId) return yVal * VIRTUAL_HEIGHT;
+    const el = document.querySelector(`[data-msg-id="${anchorId}"]`);
+    if (!el) return -10000; // Position off-screen if message not loaded yet
+    return el.offsetTop + (yVal * el.offsetHeight);
+  }, []);
+
   // Core Drawing Function - Defined first to avoid hosting issues
   const drawLine = useCallback((x1, y1, x2, y2, strokeColor, size, currentTool) => {
     if (!contextRef.current) return;
@@ -43,18 +53,20 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
   // Internal helper to re-draw all strokes
   const redraw = useCallback((strokesToDraw, width) => {
     if (!contextRef.current) return;
+    let maxFoundY = 0;
+    
     strokesToDraw.forEach(s => {
-      drawLine(
-        s.x1 * width, 
-        s.y1 * VIRTUAL_HEIGHT, 
-        s.x2 * width, 
-        s.y2 * VIRTUAL_HEIGHT, 
-        s.color, 
-        s.brushSize, 
-        s.tool
-      );
+      const ay1 = resolveCoord(s.y1, s.anchorId);
+      const ay2 = resolveCoord(s.y2, s.anchorId);
+      
+      // Don't draw if the message isn't even loaded
+      if (ay1 < -5000) return;
+
+      drawLine(s.x1 * width, ay1, s.x2 * width, ay2, s.color, s.brushSize, s.tool);
+      maxFoundY = Math.max(maxFoundY, ay1, ay2);
     });
-  }, [drawLine]);
+    setCanvasHeight(prev => Math.max(prev, maxFoundY + 50));
+  }, [drawLine, resolveCoord]);
 
   // Initialize and Resize Canvas with DPI Scaling
   useEffect(() => {
@@ -65,16 +77,16 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
       const parent = canvas.parentElement;
       if (!parent) return;
 
-      const { clientWidth: width, clientHeight: height } = parent;
+      const { clientWidth: width } = parent;
       const dpr = window.devicePixelRatio || 1;
 
       // Set display size
       canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      canvas.style.height = `${parent.scrollHeight}px`;
 
       // Set actual resolution
       canvas.width = width * dpr;
-      canvas.height = height * dpr;
+      canvas.height = parent.scrollHeight * dpr;
 
       const ctx = canvas.getContext('2d');
       ctx.scale(dpr, dpr);
@@ -121,24 +133,46 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
       x: clientX - rect.left,
       y: clientY - rect.top,
       width: rect.width,
-      height: rect.height
+      height: rect.height,
+      clientX,
+      clientY
     };
   };
 
   const startDrawing = (e) => {
-    const { x, y } = getCoordinates(e.nativeEvent || e);
+    const coords = getCoordinates(e.nativeEvent || e);
+    const { x, y, clientX, clientY } = coords;
+    
+    // Find the message anchor
+    const el = document.elementFromPoint(clientX, clientY);
+    const msgEl = el?.closest('[data-msg-id]');
+    
+    if (msgEl) {
+      currentAnchorRef.current = {
+        id: msgEl.dataset.msgId,
+        top: msgEl.offsetTop,
+        height: msgEl.offsetHeight
+      };
+    } else {
+      currentAnchorRef.current = null;
+    }
+
     setIsDrawing(true);
-    contextRef.current.lastX = x;
-    contextRef.current.lastY = y;
+    if (contextRef.current) {
+      contextRef.current.lastX = x;
+      contextRef.current.lastY = y;
+    }
   };
 
   const endDrawing = () => {
     setIsDrawing(false);
+    currentAnchorRef.current = null;
   };
 
   const handleMouseMove = (e) => {
     const coords = getCoordinates(e.nativeEvent || e);
-    const { x, y, width, height } = coords;
+    const { x, y, width } = coords;
+    const anchor = currentAnchorRef.current;
 
     // Emit cursor position
     if (onMouseMove) {
@@ -152,11 +186,24 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
 
     drawLine(lastX, lastY, x, y, color, brushSize, tool);
 
+    // Normalize coordinates
+    let normY1, normY2, anchorId = null;
+    
+    if (anchor) {
+      anchorId = anchor.id;
+      normY1 = (lastY - anchor.top) / anchor.height;
+      normY2 = (y - anchor.top) / anchor.height;
+    } else {
+      normY1 = lastY / VIRTUAL_HEIGHT;
+      normY2 = y / VIRTUAL_HEIGHT;
+    }
+
     const newStroke = {
       x1: lastX / width,
-      y1: lastY / VIRTUAL_HEIGHT,
+      y1: normY1,
       x2: x / width,
-      y2: y / VIRTUAL_HEIGHT,
+      y2: normY2,
+      anchorId,
       color,
       brushSize,
       tool
@@ -181,6 +228,7 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
     setLocalStrokes([]);
+    setCanvasHeight(0);
   }, []);
 
   const setStrokes = useCallback((strokes) => {
@@ -211,7 +259,7 @@ export const useDrawing = ({ onRemoteDraw, onMouseMove } = {}) => {
     clearCanvas,
     drawLine,
     setStrokes,
-    setLocalStrokes
+    setLocalStrokes,
+    canvasHeight
   };
 };
-

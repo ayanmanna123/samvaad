@@ -8,7 +8,7 @@ import { useDrawing } from '../../hooks/useDrawing';
  * Chat Overlay Collaborative Canvas
  * Sits directly on top of the message list
  */
-const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
+const DrawingCanvas = ({ conversationId, isActive, onClose, user, onHeightChange }) => {
   const [showControls, setShowControls] = useState(true);
 
   const onRemoteDraw = (data) => {
@@ -41,8 +41,16 @@ const DrawingCanvas = ({ conversationId, isActive, onClose, user }) => {
     clearCanvas,
     drawLine,
     setStrokes,
-    setLocalStrokes
+    setLocalStrokes,
+    canvasHeight
   } = useDrawing({ onRemoteDraw, onMouseMove });
+
+  // Sync height with parent to ensure scrollability
+  useEffect(() => {
+    if (onHeightChange) {
+      onHeightChange(canvasHeight);
+    }
+  }, [canvasHeight, onHeightChange]);
 
   // Handle Socket Events
   useEffect(() => {
